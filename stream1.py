@@ -35,6 +35,7 @@ st.markdown("<h1 class='centered header'>CSV Agent Application with Groq, Huggin
 # Prompt user to input their Groq API key
 api_key = st.text_input("Enter your Groq API Key", type="password")
 
+# Make sure the API key is entered
 if api_key:
     # Initialize Groq with user-provided key
     groq_llm = ChatGroq(
@@ -42,13 +43,14 @@ if api_key:
         temperature=0,
         max_tokens=None,
         timeout=None,
-        max_retries=2
+        max_retries=2,
+        api_key=api_key  # Pass the API key here
     )
     
+    # Initialize LIDA
     lida = initialize_lida(api_key)
 
     # Continue the rest of the app...
-    # Upload CSV once and use it for both types of queries
     file_path = "ai4i2020.csv"
 
     if file_path:
@@ -88,7 +90,7 @@ if api_key:
         st.markdown("<h2 class='subheader'>Ask a Question</h2>", unsafe_allow_html=True)
         st.markdown('<p style="color: green; font-size: 15px;">Enter query for a visualization, table, and summary:</p>', unsafe_allow_html=True)
 
-# Text area for user input
+        # Text area for user input
         query = st.text_area("", height=40)
 
         if st.button("Submit"):
