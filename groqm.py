@@ -20,7 +20,6 @@ groq_llm = ChatGroq(
     temperature=0,
     max_tokens=None,
     timeout=None,
-    max_retries=2
     api_key=api_key
 )
 
