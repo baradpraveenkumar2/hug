@@ -97,15 +97,29 @@ if api_key:
             
             divided_queries = split_query_into_parts(query, api_key)
             st.write(divided_queries+"hello")
-            if 'Visualization:' in divided_queries and 'Table:' in divided_queries and 'Summary:' in divided_queries:
-                visualization_query = divided_queries.split('Visualization:')[1].split('Table:')[0].strip()
-                table_query = divided_queries.split('Table:')[1].split('Summary:')[0].strip()
-                summary_query = divided_queries.split('Summary:')[1].strip()
+            # Extract the AIMessage content
+            ai_message_content = llm_output["messages"][0].split("content=")[1].split(", additional_kwargs")[0].strip().strip('"')
 
-                # Create placeholders for status messages
-                vis_status = st.empty()
-                table_status = st.empty()
-                summary_status = st.empty()
+# Capture the content inside variables
+            visualization_query = ""
+            table_query = ""
+            summary_query = ""
+
+# Extract the "Visualization:", "Table:", and "Summary:" sections from the message
+            if 'Visualization:' in ai_message_content and 'Table:' in ai_message_content and 'Summary:' in ai_message_content:
+                visualization_query = ai_message_content.split('Visualization:')[1].split('Table:')[0].strip()
+                table_query = ai_message_content.split('Table:')[1].split('Summary:')[0].strip()
+                summary_query = ai_message_content.split('Summary:')[1].strip()
+
+# Create placeholders for status messages in Streamlit
+            vis_status = st.empty()
+            table_status = st.empty()
+            summary_status = st.empty()
+
+# Display the captured queries in placeholders (for testing)
+            vis_status.write(f"Visualization Query: {visualization_query}")
+            table_status.write(f"Table Query: {table_query}")
+            summary_status.write(f"Summary Query: {summary_query}")
 
                 if is_visualization_query(query) or ('Visualization' in divided_queries and 'None' not in visualization_query):
                     vis_status.markdown("<h2 class='subheader'>Generating Visualization...</h2>", unsafe_allow_html=True)
