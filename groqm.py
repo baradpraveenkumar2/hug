@@ -1,7 +1,7 @@
 import pandas as pd
 import sqlite3
 import difflib
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, pipeline
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from lida import Manager, TextGenerationConfig, llm
 from dotenv import load_dotenv
 from PIL import Image
@@ -26,20 +26,24 @@ lida = Manager(text_gen=llm("hf"))  # Using GPT-2 for text generation
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 model = GPT2LMHeadModel.from_pretrained("gpt2")
 
-# Set pad_token_id to eos_token_id to avoid padding issues
-model.config.pad_token_id = model.config.eos_token_id
+# Add PAD token if it doesn't exist
+if tokenizer.pad_token is None:
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})  # Add [PAD] token
+
+# Set pad_token_id to the PAD token or eos_token if necessary
+model.config.pad_token_id = tokenizer.pad_token_id
 
 # Helper function to generate text using GPT-2
 def generate_gpt2_response(prompt, max_length=150):
     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
-    
+
     # Ensure attention mask is set and pad token is configured correctly
     with torch.no_grad():
         generated_ids = model.generate(
             inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
             max_length=max_length,
-            pad_token_id=model.config.eos_token_id
+            pad_token_id=tokenizer.pad_token_id  # Set pad_token_id
         )
     return tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
