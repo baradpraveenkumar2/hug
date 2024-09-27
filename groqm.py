@@ -137,7 +137,7 @@ def split_query_into_parts(user_query):
     response = cohere_client.generate(
         model="command-xlarge-nightly",
         prompt=prompt,
-        max_tokens=300,
+        max_tokens=1000,
         temperature=0.5
     )
     
