@@ -20,7 +20,7 @@ def base64_to_image(base64_string):
     return Image.open(BytesIO(byte_data))
 
 # Initialize the LIDA manager for visualization
-lida = Manager(text_gen=llm("gpt2"))  # Using GPT-2 for text generation
+lida = Manager(text_gen=llm("hf"))  # Using GPT-2 for text generation
 
 # GPT-2 setup: Load the GPT-2 model and tokenizer from Hugging Face
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
