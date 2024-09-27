@@ -44,7 +44,7 @@ if api_key:
         max_tokens=None,
         timeout=None,
         max_retries=2,
-        api_key=api_key  # Pass the API key here
+        api_key="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"  # Pass the API key here
     )
     
     # Initialize LIDA
