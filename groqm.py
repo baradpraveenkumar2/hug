@@ -110,11 +110,13 @@ def run_sql_query(sql_query):
         return str(e)
 
 # Helper function to split input query into visualization, table, and summary parts
+from langchain.prompts import ChatPromptTemplate
+
 def split_query_into_parts(user_query, api_key):
     # Set up the Groq prompt using ChatPromptTemplate
     prompt = ChatPromptTemplate.from_messages([
         ("system", 
-         "Analyze the user's query: '{user_query}' and break it down into three distinct sections: Visualization, Table, and Summary. "
+         "Analyze the user's query and break it down into three distinct sections: Visualization, Table, and Summary. "
          "Ensure each section is correctly handled based on the dataset. The available columns from the dataset are: "
          "['UDI', 'Product_ID', 'Type', 'Air_temperature__K_', 'Process_temperature__K_', "
          "'Rotational_speed__rpm_', 'Torque__Nm_', 'Tool_wear__min_', 'Machine_failure', 'TWF', 'HDF', 'PWF', 'OSF', 'RNF']. "
@@ -155,11 +157,10 @@ def split_query_into_parts(user_query, api_key):
 
     # Invoke the prompt
     messages = prompt.invoke({
-        "query": user_query
+        "query": user_query  # Use consistent key 'query' in both the template and input.
     })
 
     # Pass the messages to the groq_llm for processing
     divided_query = groq_llm.invoke(messages)
     
     return divided_query
-
