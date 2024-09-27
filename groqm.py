@@ -21,7 +21,7 @@ def base64_to_image(base64_string):
 
 # Initialize the LIDA manager for visualization
 def initialize_lida(api_key):
-    return Manager(text_gen=llm("mixtral-8x7b-32768", api_key=api_key))
+    return Manager(text_gen=llm("hf", api_key=api_key))
 
 # Agent 3: CSV Visualization
 def generate_visualization(file_path, user_query, api_key):
