@@ -2,50 +2,31 @@ import streamlit as st
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import pandas as pd
 import os
-from groqm import store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
-from langchain_experimental.agents import create_csv_agent
-from langchain.llms import HuggingFaceHub
-from dotenv import load_dotenv
-
-# Load environment variables for Hugging Face API key
-load_dotenv()
-huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
-
-# Set up page
-st.set_page_config(page_title="CSV Agent Application", layout="wide")
-
-# CSS Styling
-st.markdown(
-    """
-    <style>
-    .main { background-image: url('https://wallpaper.dog/large/5452685.jpg'); background-size: cover; background-color: black; }
-    .centered { text-align: center; }
-    .header { font-size: 36px; font-weight: bold; color: #ffffff; }
-    .subheader { font-size: 28px; font-weight: bold; color: #ffffff; }
-    .text { font-size: 18px; font-weight: bold; color: #ffffff; }
-    .example-question { font-size: 18px; font-weight: bold; color: #ffffff; margin-bottom: 5px; }
-    .column-names { font-size: 18px; font-weight: bold; color: #ffffff; background-color: #4F8BF9; padding: 10px; border-radius: 10px; }
-    .highlight-summary { background-color: #333333; padding: 15px; border-left: 5px solid #4F8BF9; font-size: 18px; font-weight: bold; color: #ffffff; }
-    textarea { background-color: #2C2C2C; color: #ffffff; font-size: 18px; font-weight: bold; padding: 15px; border-radius: 10px; border: 2px solid #4F8BF9; }
-    button { font-size: 18px; font-weight: bold; color: #ffffff; }
-    .stAlert { color: #ffffff; }
-    .stMarkdown { color: #ffffff; }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown("<h1 class='centered header'>CSV Agent Application with Hugging Face GPT-2 & SQLite</h1>", unsafe_allow_html=True)
+from chat_bot import store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
+import torch
+from torch import nn
 
 # GPT-2 setup: Load the GPT-2 model and tokenizer from Hugging Face
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 model = GPT2LMHeadModel.from_pretrained("gpt2")
 
-# Helper function to generate text using GPT-2
+# Set pad_token_id to eos_token_id for GPT2 to prevent errors
+model.config.pad_token_id = model.config.eos_token_id
+
+# Helper function to generate text using GPT-2 with attention_mask and pad_token_id
 def generate_gpt2_response(prompt, max_length=150):
-    inputs = tokenizer.encode(prompt, return_tensors="pt")
-    outputs = model.generate(inputs, max_length=max_length, num_return_sequences=1)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True)
+    input_ids = inputs['input_ids']
+
+    # Generate text
+    with torch.no_grad():
+        generated_ids = model.generate(
+            input_ids=input_ids,
+            max_length=max_length,
+            pad_token_id=model.config.eos_token_id,  # Ensure padding token is set to eos_token
+            attention_mask=inputs['attention_mask']  # Set attention mask
+        )
+    return tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
 # Continue the rest of the app...
 # Upload CSV once and use it for both types of queries
@@ -104,11 +85,10 @@ if file_path:
                 else:
                     st.error(f"Re enter the query in detail")
 
-            # Process the summary query properly by invoking the CSV agent
+            # Process the summary query properly by invoking GPT-2
             if 'Summary' in divided_queries and 'None' not in summary_query:
                 st.markdown("<h2 class='subheader'>Fetching Summary...</h2>", unsafe_allow_html=True)
 
-                # Use Hugging Face-based model for the summary
                 try:
                     summary_output = generate_gpt2_response(summary_query)
                     # Display the summary output with highlighting
