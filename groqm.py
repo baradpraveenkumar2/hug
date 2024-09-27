@@ -20,7 +20,7 @@ groq_llm = ChatGroq(
     temperature=0,
     max_tokens=None,
     timeout=None,
-    api_key=api_key
+    api_key="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"
 )
 
 # Helper function to decode base64 to an image
