@@ -21,6 +21,7 @@ groq_llm = ChatGroq(
     max_tokens=None,
     timeout=None,
     max_retries=2
+    api_key=api_key
 )
 
 # Helper function to decode base64 to an image
