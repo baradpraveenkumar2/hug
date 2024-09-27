@@ -105,6 +105,7 @@ def split_query_into_parts(user_query):
         f"Ensure each section is correctly handled based on the dataset. The available columns from the dataset are: "
         f"['UDI', 'Product_ID', 'Type', 'Air_temperature__K_', 'Process_temperature__K_', "
         f"'Rotational_speed__rpm_', 'Torque__Nm_', 'Tool_wear__min_', 'Machine_failure', 'TWF', 'HDF', 'PWF', 'OSF', 'RNF']. "
+        f"Error executing table query: Execution failed on sql 'sql SELECT solve these types of issues"
         
         f"Here are detailed instructions for each section: "
 
@@ -137,7 +138,7 @@ def split_query_into_parts(user_query):
     response = cohere_client.generate(
         model="command-xlarge-nightly",
         prompt=prompt,
-        max_tokens=1000,
+        max_tokens=2000,
         temperature=0.5
     )
     
