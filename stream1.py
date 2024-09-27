@@ -1,8 +1,9 @@
 import streamlit as st
+from langchain_groq import ChatGroq
 import pandas as pd
 import os
-from groqm import initialize_lida, store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
-from langchain_groq import ChatGroq
+from chat_bot import initialize_lida, store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
+from langchain.llms import OpenAI as LangOpenAI
 from langchain_experimental.agents import create_csv_agent
 
 # Set up page
@@ -29,14 +30,21 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("<h1 class='centered header'>CSV Agent Application with LangChain, LIDA & SQLite</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='centered header'>CSV Agent Application with Groq, Hugging Face & SQLite</h1>", unsafe_allow_html=True)
 
-# Prompt user to input their Hugging Face API key
-api_key = st.text_input("Enter your Hugging Face API Key", type="password")
+# Prompt user to input their Groq API key
+api_key = st.text_input("Enter your Groq API Key", type="password")
 
 if api_key:
-    # Initialize ChatGroq and LIDA with user-provided key
-    client = ChatGroq(model="mixtral-8x7b-32768", api_key=api_key)
+    # Initialize Groq with user-provided key
+    groq_llm = ChatGroq(
+        model="mixtral-8x7b-32768",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2
+    )
+    
     lida = initialize_lida(api_key)
 
     # Continue the rest of the app...
@@ -47,7 +55,7 @@ if api_key:
         st.write(f"Using file: {file_path}")
         
         df = store_csv_in_db(file_path)
-        st.markdown(f"<div class='column-names'>This chatbot, built on the AI4I 2020 Predictive Maintenance Dataset, helps predict machine failures based on operational data like temperature, speed, torque, and tool wear. The chatbot allows users to query for visualizations, tables, and summaries using natural language input. It leverages LangChain to interpret queries and uses SQLite for data storage. The chatbot includes error correction for column names and generates visualizations using the LIDA library for charts. The user experience is streamlined through Streamlit, with continuous conversation capabilities, making the system efficient for predictive maintenance tasks.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='column-names'>This chatbot, built on the AI4I 2020 Predictive Maintenance Dataset, helps predict machine failures based on operational data like temperature, speed, torque, and tool wear. The chatbot allows users to query for visualizations, tables, and summaries using natural language input. It leverages Groq to interpret queries and uses SQLite for data storage. The chatbot includes error correction for column names and generates visualizations using the LIDA library for charts. The user experience is streamlined through Streamlit, with continuous conversation capabilities, making the system efficient for predictive maintenance tasks.</div>", unsafe_allow_html=True)
 
         EXAMPLE_QUESTIONS = [
             "1. How many power failure '1' products are there, and what is the average air temperature of only power failure '1' products?",
@@ -76,10 +84,11 @@ if api_key:
         st.markdown("<h2 class='subheader'>Available Column Names</h2>", unsafe_allow_html=True)
         st.markdown(f"<div class='column-names'>UDI, Product_ID, Type, Air_temperature__K_, Process_temperature__K_, Rotational_speed__rpm_, Torque__Nm_, Tool_wear__min_, Machine_failure,TWF (Tool Wear Failure), HDF (Heat Dissipation Failure), PWF (Power Failure), OSF (Overstrain Failure), RNF (Random Failures).</div>", unsafe_allow_html=True)
 
+
         st.markdown("<h2 class='subheader'>Ask a Question</h2>", unsafe_allow_html=True)
         st.markdown('<p style="color: green; font-size: 15px;">Enter query for a visualization, table, and summary:</p>', unsafe_allow_html=True)
 
-        # Text area for user input
+# Text area for user input
         query = st.text_area("", height=40)
 
         if st.button("Submit"):
@@ -122,7 +131,7 @@ if api_key:
 
                     # Create CSV agent for handling the summary
                     agent = create_csv_agent(
-                        client,
+                        groq_llm,
                         file_path,
                         verbose=True,
                         allow_dangerous_code=True
@@ -144,4 +153,4 @@ if api_key:
             else:
                 st.error("Please try a clearer query.")
 else:
-    st.error("Please enter your Hugging Face API key to proceed.")
+    st.error("Please enter your Groq API key to proceed.")
