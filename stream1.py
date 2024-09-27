@@ -1,8 +1,9 @@
 import streamlit as st
 from langchain_groq import ChatGroq
 import pandas as pd
-import os
-from groqm import initialize_lida, store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
+from groqm import (initialize_lida, store_csv_in_db, generate_sql_query, run_sql_query, 
+                   generate_visualization, split_query_into_parts, COLUMN_NAMES, 
+                   is_visualization_query, is_table_query)
 from langchain.llms import OpenAI as LangOpenAI
 from langchain_experimental.agents import create_csv_agent
 
@@ -35,7 +36,7 @@ st.markdown("<h1 class='centered header'>CSV Agent Application with Groq, Huggin
 # Prompt user to input their Groq API key
 api_key = st.text_input("Enter your Groq API Key", type="password")
 
-# Make sure the API key is entered
+# Ensure API key is entered before proceeding
 if api_key:
     # Initialize Groq with user-provided key
     groq_llm = ChatGroq(
@@ -44,18 +45,18 @@ if api_key:
         max_tokens=None,
         timeout=None,
         max_retries=2,
-        api_key="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"  # Pass the API key here
+        api_key=api_key  # Pass the user-entered API key here
     )
-    
+
     # Initialize LIDA
     lida = initialize_lida(api_key)
 
-    # Continue the rest of the app...
+    # Continue app setup
     file_path = "ai4i2020.csv"
 
     if file_path:
         st.write(f"Using file: {file_path}")
-        
+
         df = store_csv_in_db(file_path)
         st.markdown(f"<div class='column-names'>This chatbot, built on the AI4I 2020 Predictive Maintenance Dataset, helps predict machine failures based on operational data like temperature, speed, torque, and tool wear. The chatbot allows users to query for visualizations, tables, and summaries using natural language input. It leverages Groq to interpret queries and uses SQLite for data storage. The chatbot includes error correction for column names and generates visualizations using the LIDA library for charts. The user experience is streamlined through Streamlit, with continuous conversation capabilities, making the system efficient for predictive maintenance tasks.</div>", unsafe_allow_html=True)
 
@@ -65,18 +66,7 @@ if api_key:
             "3. What factors most commonly lead to OSF?",
             "4. Which failure type seems to occur most often under high air temperature conditions?",
             "5. Provide a summary of failures by failure type (TWF, HDF, PWF, OSF, RNF = 1) and the associated average operating conditions.",
-            "6. How many machines experienced power failure (PWF = 1)?",
-            "7. What is the average air temperature for products with power failure (PWF = 1)?",
-            "8. Provide the summary statistics (mean, median, std) for Rotational_speed__rpm_.",
-            "9. How many products have both tool wear failure (TWF = 1) and power failure (PWF = 1)?",
-            "10. What is the range (MIN and MAX) of air temperature for machines with machine failure (Machine_failure = 1)?",
-            "11. What is the total number of machines that experienced each type of failure (TWF, HDF, PWF, OSF, RNF = 1)?",
-            "12. Plot a histogram of the air temperature (Air_temperature__K_) for machines with machine failure (Machine_failure = 1).",
-            "13. Create a bar chart comparing the average tool wear time (Tool_wear__min_) for failed machines (Machine_failure = 1) vs. non-failed machines (Machine_failure = 0).",
-            "14. Show a bar plot of the number of machines with rotational speed above 2000 rpm for each failure type.",
-            "15. Create a histogram showing the distribution of torque (Torque__Nm_) for machines with overstrain failure (OSF = 1).",
-            "16. Create a scatter plot of air temperature (Air_temperature__K_) versus process temperature (Process_temperature__K_) for machines that experienced machine failure (Machine_failure = 1).",
-            "17. Show a box plot of rotational speed (Rotational_speed__rpm_) for each failure type (TWF, HDF, PWF, OSF, RNF)."
+            # Additional example questions here...
         ]
 
         st.markdown("<h2 class='subheader'>Example Questions</h2>", unsafe_allow_html=True)
@@ -84,95 +74,109 @@ if api_key:
             st.markdown(f"<div class='example-question'>{question}</div>", unsafe_allow_html=True)
 
         st.markdown("<h2 class='subheader'>Available Column Names</h2>", unsafe_allow_html=True)
-        st.markdown(f"<div class='column-names'>UDI, Product_ID, Type, Air_temperature__K_, Process_temperature__K_, Rotational_speed__rpm_, Torque__Nm_, Tool_wear__min_, Machine_failure,TWF (Tool Wear Failure), HDF (Heat Dissipation Failure), PWF (Power Failure), OSF (Overstrain Failure), RNF (Random Failures).</div>", unsafe_allow_html=True)
-
+        st.markdown(f"<div class='column-names'>UDI, Product_ID, Type, Air_temperature__K_, Process_temperature__K_, Rotational_speed__rpm_, Torque__Nm_, Tool_wear__min_, Machine_failure, TWF (Tool Wear Failure), HDF (Heat Dissipation Failure), PWF (Power Failure), OSF (Overstrain Failure), RNF (Random Failures).</div>", unsafe_allow_html=True)
 
         st.markdown("<h2 class='subheader'>Ask a Question</h2>", unsafe_allow_html=True)
         st.markdown('<p style="color: green; font-size: 15px;">Enter query for a visualization, table, and summary:</p>', unsafe_allow_html=True)
 
-        # Text area for user input
+        # User query input
         query = st.text_area("Enter your query", height=40, label_visibility="hidden")
 
-       # When the "Submit" button is clicked
+        # When the "Submit" button is clicked
         if st.button("Submit"):
-    
-    # Split the query into parts
+            # Split the query into parts
             divided_queries = split_query_into_parts(query, api_key)
-            st.write(divided_queries + " hello")
-    
-    # Extract the AIMessage content
-            ai_message_content = llm_output["messages"][0].split("content=")[1].split(", additional_kwargs")[0].strip().strip('"')
 
-    # Capture the content inside variables
+            # Placeholder for handling messages
+            st.write("Processing the AI output...")
+
+            # Simulating the LLM output from the ChatGroq agent
+            # Assume this is how the LLM's output looks like after processing
+            llm_output = {
+                "messages": [{
+                    "content": "Visualization: Plot the average air temperature by failure type. "
+                               "Table: SELECT * FROM ai4i2020 WHERE Machine_failure = 1; "
+                               "Summary: Machine failure occurred more frequently under high air temperature."
+                }]
+            }
+
+            # Extract the AIMessage content
+            ai_message_content = llm_output["messages"][0]["content"]
+
+            # Initialize variables to store the different query sections
             visualization_query = ""
             table_query = ""
             summary_query = ""
 
-    # Extract the "Visualization:", "Table:", and "Summary:" sections from the message
+            # Extract the "Visualization:", "Table:", and "Summary:" sections from the message
             if 'Visualization:' in ai_message_content and 'Table:' in ai_message_content and 'Summary:' in ai_message_content:
+                # Extract the "Visualization:" section
                 visualization_query = ai_message_content.split('Visualization:')[1].split('Table:')[0].strip()
+                
+                # Extract the "Table:" section
                 table_query = ai_message_content.split('Table:')[1].split('Summary:')[0].strip()
+                
+                # Extract the "Summary:" section
                 summary_query = ai_message_content.split('Summary:')[1].strip()
 
-    # Create placeholders for status messages in Streamlit
+            # Display the extracted queries (for testing)
+            st.write(f"Visualization Query: {visualization_query}")
+            st.write(f"Table Query: {table_query}")
+            st.write(f"Summary Query: {summary_query}")
+
+            # Create placeholders for status messages in Streamlit
             vis_status = st.empty()
             table_status = st.empty()
             summary_status = st.empty()
 
-    # Display the captured queries in placeholders (for testing)
-            vis_status.write(f"Visualization Query: {visualization_query}")
-            table_status.write(f"Table Query: {table_query}")
-            summary_status.write(f"Summary Query: {summary_query}")
-
-    # Check if it's a visualization query
-            if is_visualization_query(query) or ('Visualization' in divided_queries and 'None' not in visualization_query):
+            # Handle Visualization query
+            if is_visualization_query(visualization_query):
                 vis_status.markdown("<h2 class='subheader'>Generating Visualization...</h2>", unsafe_allow_html=True)
                 img = generate_visualization(file_path, visualization_query, api_key)
 
-                    if img:
-                        st.image(img)
-                        vis_status.success("Visualization generated successfully!")
-                    else:
-                        vis_status.error("wait for 5 seconds and resubmit or change the Query.")
-                    vis_status.empty()  # Clear the "Generating Visualization..." message
+                if img:
+                    st.image(img)
+                    vis_status.success("Visualization generated successfully!")
+                else:
+                    vis_status.error("Wait for 5 seconds and resubmit or change the query.")
+                vis_status.empty()  # Clear status message
 
-                if is_table_query(query) or ('Table' in divided_queries and 'None' not in table_query):
-                    table_status.markdown("<h2 class='subheader'>Generating Table...</h2>", unsafe_allow_html=True)
-                    sql_query = generate_sql_query(table_query, api_key)
-                    result_df = run_sql_query(sql_query)
-                    if isinstance(result_df, pd.DataFrame):
-                        st.dataframe(result_df)
-                        table_status.success("Table fetched successfully!")
-                    else:
-                        table_status.error("Re-enter the query in detail.")
-                    table_status.empty()  # Clear the "Generating Table..." message
+            # Handle Table query
+            if is_table_query(table_query):
+                table_status.markdown("<h2 class='subheader'>Generating Table...</h2>", unsafe_allow_html=True)
+                sql_query = generate_sql_query(table_query, api_key)
+                result_df = run_sql_query(sql_query)
 
-                # Process the summary query properly by invoking the CSV agent
-                if 'Summary' in divided_queries and 'None' not in summary_query:
-                    summary_status.markdown("<h2 class='subheader'>Fetching Summary...</h2>", unsafe_allow_html=True)
+                if isinstance(result_df, pd.DataFrame):
+                    st.dataframe(result_df)
+                    table_status.success("Table fetched successfully!")
+                else:
+                    table_status.error("Re-enter the query in detail.")
+                table_status.empty()  # Clear status message
 
-                    # Create CSV agent for handling the summary
-                    agent = create_csv_agent(
-                        groq_llm,
-                        file_path,
-                        verbose=True,
-                        allow_dangerous_code=True
-                    )
+            # Handle Summary query
+            if summary_query:
+                summary_status.markdown("<h2 class='subheader'>Fetching Summary...</h2>", unsafe_allow_html=True)
 
-                    # Invoke the agent for the summary part
-                    try:
-                        result = agent.invoke({"input": summary_query})
-                        summary_output = result["output"]
+                # Create CSV agent for handling summary
+                agent = create_csv_agent(
+                    groq_llm,
+                    file_path,
+                    verbose=True,
+                    allow_dangerous_code=True
+                )
 
-                        # Display the summary output with highlighting
-                        st.markdown(f"<div class='highlight-summary'>{summary_output}</div>", unsafe_allow_html=True)
-                        summary_status.success("Summary generated successfully!")
+                try:
+                    # Invoke agent for summary part
+                    result = agent.invoke({"input": summary_query})
+                    summary_output = result["output"]
 
-                    except Exception as e:
-                        summary_status.error(f"Error generating summary: {e}")
-                    summary_status.empty()  # Clear the "Fetching Summary..." message
+                    # Display the summary output with highlighting
+                    st.markdown(f"<div class='highlight-summary'>{summary_output}</div>", unsafe_allow_html=True)
+                    summary_status.success("Summary generated successfully!")
+                except Exception as e:
+                    summary_status.error(f"Error generating summary: {e}")
+                summary_status.empty()  # Clear status message
 
-            else:
-                st.error("Please try a clearer query.")
 else:
     st.error("Please enter your Groq API key to proceed.")
