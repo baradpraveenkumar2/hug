@@ -26,24 +26,39 @@ lida = Manager(text_gen=llm("hf"))  # Using GPT-2 for text generation
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 model = GPT2LMHeadModel.from_pretrained("gpt2")
 
+# Set pad_token_id to eos_token_id to avoid padding issues
+model.config.pad_token_id = model.config.eos_token_id
+
 # Helper function to generate text using GPT-2
 def generate_gpt2_response(prompt, max_length=150):
-    inputs = tokenizer.encode(prompt, return_tensors="pt")
-    outputs = model.generate(inputs, max_length=max_length, num_return_sequences=1)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
+    
+    # Ensure attention mask is set and pad token is configured correctly
+    with torch.no_grad():
+        generated_ids = model.generate(
+            inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            max_length=max_length,
+            pad_token_id=model.config.eos_token_id
+        )
+    return tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
 # Agent 3: CSV Visualization
 def generate_visualization(file_path, user_query):
     textgen_config = TextGenerationConfig(n=1, temperature=0.2, model="gpt-2", use_cache=True)
 
-    summary = lida.summarize(file_path, summary_method="default", textgen_config=textgen_config)
-    charts = lida.visualize(summary=summary, goal=user_query, textgen_config=textgen_config, library="seaborn")
+    try:
+        summary = lida.summarize(file_path, summary_method="default", textgen_config=textgen_config)
+        charts = lida.visualize(summary=summary, goal=user_query, textgen_config=textgen_config, library="seaborn")
 
-    if charts:
-        img_base64_string = charts[0].raster
-        img = base64_to_image(img_base64_string)
-        return img
-    else:
+        if charts:
+            img_base64_string = charts[0].raster
+            img = base64_to_image(img_base64_string)
+            return img
+        else:
+            return None
+    except Exception as e:
+        print(f"Error generating visualization: {e}")
         return None
 
 # Function to determine whether the query is for visualization or text-based output
@@ -70,11 +85,15 @@ def correct_column_name(user_input_column):
 
 # Step 1: Store CSV into SQLite Database
 def store_csv_in_db(csv_file):
-    df = pd.read_csv(csv_file)
-    conn = sqlite3.connect("local_database.db")
-    df.to_sql('data_table', conn, if_exists='replace', index=False)
-    conn.close()
-    return df
+    try:
+        df = pd.read_csv(csv_file)
+        conn = sqlite3.connect("local_database.db")
+        df.to_sql('data_table', conn, if_exists='replace', index=False)
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"Error storing CSV into database: {e}")
+        return None
 
 # Step 2: Generate SQL Query using GPT-2 based on User Input with corrected column names
 def generate_sql_query(user_input):
@@ -87,8 +106,12 @@ def generate_sql_query(user_input):
         f"Use the table name 'data_table' in the query."
     )
 
-    sql_query = generate_gpt2_response(prompt)
-    return sql_query
+    try:
+        sql_query = generate_gpt2_response(prompt)
+        return sql_query
+    except Exception as e:
+        print(f"Error generating SQL query: {e}")
+        return None
 
 # Step 3: Run the SQL query on the SQLite database
 def run_sql_query(sql_query):
@@ -99,7 +122,8 @@ def run_sql_query(sql_query):
         return result_df
     except Exception as e:
         conn.close()
-        return str(e)
+        print(f"Error running SQL query: {e}")
+        return None
 
 # Helper function to split input query into visualization, table, and summary parts using GPT-2
 def split_query_into_parts(user_query):
@@ -112,5 +136,9 @@ def split_query_into_parts(user_query):
         f"1) Visualization: <description of chart> 2) Table: <SQL query or Python code> 3) Summary: <text-based summary>. "
     )
 
-    divided_query = generate_gpt2_response(prompt, max_length=300)
-    return divided_query
+    try:
+        divided_query = generate_gpt2_response(prompt, max_length=300)
+        return divided_query
+    except Exception as e:
+        print(f"Error splitting query: {e}")
+        return None
