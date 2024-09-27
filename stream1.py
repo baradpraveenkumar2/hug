@@ -1,17 +1,24 @@
 import streamlit as st
-from groqm import store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
-from transformers import pipeline
-from langchain_experimental.agents import create_csv_agent
-import os
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import pandas as pd
+import os
+from chat_bot import store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
+from langchain_experimental.agents import create_csv_agent
+from langchain.llms import HuggingFaceHub
+from dotenv import load_dotenv
 
+# Load environment variables for Hugging Face API key
+load_dotenv()
+huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
+
+# Set up page
 st.set_page_config(page_title="CSV Agent Application", layout="wide")
 
-# CSS Styling for white font on dark background
+# CSS Styling
 st.markdown(
     """
     <style>
-    .main { background-image: url('https://www.publicsectorexecutive.com/write/MediaUploads/iStock-658867198_edit.jpg'); background-size: cover; background-color: black; }
+    .main { background-image: url('https://wallpaper.dog/large/5452685.jpg'); background-size: cover; background-color: black; }
     .centered { text-align: center; }
     .header { font-size: 36px; font-weight: bold; color: #ffffff; }
     .subheader { font-size: 28px; font-weight: bold; color: #ffffff; }
@@ -21,15 +28,26 @@ st.markdown(
     .highlight-summary { background-color: #333333; padding: 15px; border-left: 5px solid #4F8BF9; font-size: 18px; font-weight: bold; color: #ffffff; }
     textarea { background-color: #2C2C2C; color: #ffffff; font-size: 18px; font-weight: bold; padding: 15px; border-radius: 10px; border: 2px solid #4F8BF9; }
     button { font-size: 18px; font-weight: bold; color: #ffffff; }
-    .stAlert { color: #ffffff; }  /* For error messages and success messages */
-    .stMarkdown { color: #ffffff; }  /* For any markdown text including generated outputs */
+    .stAlert { color: #ffffff; }
+    .stMarkdown { color: #ffffff; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-st.markdown("<h1 class='centered header'>CSV Agent Application with LangChain, LIDA & SQLite</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='centered header'>CSV Agent Application with Hugging Face GPT-2 & SQLite</h1>", unsafe_allow_html=True)
 
+# GPT-2 setup: Load the GPT-2 model and tokenizer from Hugging Face
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+
+# Helper function to generate text using GPT-2
+def generate_gpt2_response(prompt, max_length=150):
+    inputs = tokenizer.encode(prompt, return_tensors="pt")
+    outputs = model.generate(inputs, max_length=max_length, num_return_sequences=1)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+# Continue the rest of the app...
 # Upload CSV once and use it for both types of queries
 file_path = "ai4i2020.csv"
 
@@ -37,9 +55,6 @@ if file_path:
     st.write(f"Using file: {file_path}")
     
     df = store_csv_in_db(file_path)
-
-    # Display column names
-    st.markdown(f"<div class='column-names'>This chatbot, built on the AI4I 2020 Predictive Maintenance Dataset, helps predict machine failures based on operational data like temperature, speed, torque, and tool wear. The chatbot allows users to query for visualizations, tables, and summaries using natural language input. It leverages LangChain to interpret queries and uses SQLite for data storage. The chatbot includes error correction for column names and generates visualizations using the LIDA library for charts. The user experience is streamlined through Streamlit, with continuous conversation capabilities, making the system efficient for predictive maintenance tasks.</div>", unsafe_allow_html=True)
 
     EXAMPLE_QUESTIONS = [
         "1. What is the average Air_temperature__K_ for each Type of product?",
@@ -53,21 +68,16 @@ if file_path:
         "9. How many machines failed due to HDF?",
         "10. Provide the summary statistics (mean, median, std) for Rotational_speed__rpm_.",
     ]
-    
+
     st.markdown("<h2 class='subheader'>Example Questions</h2>", unsafe_allow_html=True)
     for question in EXAMPLE_QUESTIONS:
         st.markdown(f"<div class='example-question'>{question}</div>", unsafe_allow_html=True)
+
     st.markdown("<h2 class='subheader'>Available Column Names</h2>", unsafe_allow_html=True)
     st.markdown(f"<div class='column-names'>{', '.join(COLUMN_NAMES)}</div>", unsafe_allow_html=True)
+
     st.markdown("<h2 class='subheader'>Ask a Question</h2>", unsafe_allow_html=True)
-
     query = st.text_area("Ask for a visualization, table, and summary in a single query:")
-
-    # Use Hugging Face API for text generation
-    huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
-    text_generation = pipeline("text-generation", 
-                               model="EleutherAI/gpt-neo-1.3B",  # Specify your preferred model here
-                               api_key=huggingface_api_key)
 
     if st.button("Submit"):
         divided_queries = split_query_into_parts(query)
@@ -92,21 +102,19 @@ if file_path:
                 if isinstance(result_df, pd.DataFrame):
                     st.dataframe(result_df)
                 else:
-                    st.error(f"Error executing table query: {result_df}")
+                    st.error(f"Re enter the query in detail")
 
-            # Process the summary query properly by invoking the Hugging Face API for text generation
+            # Process the summary query properly by invoking the CSV agent
             if 'Summary' in divided_queries and 'None' not in summary_query:
                 st.markdown("<h2 class='subheader'>Fetching Summary...</h2>", unsafe_allow_html=True)
 
-                # Use Hugging Face API for summary generation
-                response = text_generation(summary_query, max_length=200, num_return_sequences=1, temperature=0.5)
-                summary_output = response[0]['generated_text']
+                # Use Hugging Face-based model for the summary
+                try:
+                    summary_output = generate_gpt2_response(summary_query)
+                    # Display the summary output with highlighting
+                    st.markdown(f"<div class='highlight-summary'>{summary_output}</div>", unsafe_allow_html=True)
 
-                # Display the summary output with highlighting
-                st.markdown(f"<div class='highlight-summary'>{summary_output}</div>", unsafe_allow_html=True)
-
+                except Exception as e:
+                    st.error(f"Error generating summary: {e}")
         else:
-            st.error("The query couldn't be divided properly. Please try a clearer query.")
-
-else:
-    st.error("CSV file not found.")
+            st.error("Please try a clearer query.")
