@@ -2,7 +2,7 @@ import streamlit as st
 from langchain_groq import ChatGroq
 import pandas as pd
 import os
-from chat_bot import initialize_lida, store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
+from groqm import initialize_lida, store_csv_in_db, generate_sql_query, run_sql_query, generate_visualization, split_query_into_parts, COLUMN_NAMES, is_visualization_query, is_table_query
 from langchain.llms import OpenAI as LangOpenAI
 from langchain_experimental.agents import create_csv_agent
 
