@@ -2,6 +2,7 @@ import pandas as pd
 import sqlite3
 import difflib
 from langchain_groq import ChatGroq
+from langchain.prompts import ChatPromptTemplate
 from lida import Manager, TextGenerationConfig, llm
 from dotenv import load_dotenv
 from PIL import Image
@@ -9,24 +10,32 @@ from io import BytesIO
 import base64
 import os
 
-# Load environment variables for Hugging Face key
-# load_dotenv()
-# hf_api_key = os.getenv("HF_API_KEY")
-# client = ChatGroq(model="mixtral-8x7b-32768", api_key=hf_api_key)
+# Load environment variables for the Hugging Face key
+#load_dotenv()
+#api_key = os.getenv("API_KEY")
+
+# Initialize Groq model
+groq_llm = ChatGroq(
+    model="mixtral-8x7b-32768",
+    temperature=0,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2
+)
 
 # Helper function to decode base64 to an image
 def base64_to_image(base64_string):
     byte_data = base64.b64decode(base64_string)
     return Image.open(BytesIO(byte_data))
 
-# Initialize the LIDA manager for visualization
+# Initialize the LIDA manager for visualization using Hugging Face models
 def initialize_lida(api_key):
     return Manager(text_gen=llm("hf", api_key=api_key))
 
 # Agent 3: CSV Visualization
 def generate_visualization(file_path, user_query, api_key):
-    textgen_config = TextGenerationConfig(n=1, temperature=0.2, model="mixtral-8x7b-32768", use_cache=True)
-    lida = Manager(text_gen=llm("mixtral-8x7b-32768", api_key=api_key))
+    textgen_config = TextGenerationConfig(n=1, temperature=0.2, model="gpt-3.5-turbo", use_cache=True)
+    lida = Manager(text_gen=llm("hf", api_key=api_key))
     summary = lida.summarize(file_path, summary_method="default", textgen_config=textgen_config)
     charts = lida.visualize(summary=summary, goal=user_query, textgen_config=textgen_config, library="seaborn")
 
@@ -67,27 +76,25 @@ def store_csv_in_db(csv_file):
     conn.close()
     return df
 
-# Step 2: Generate SQL Query using ChatGroq based on User Input with corrected column names
+# Step 2: Generate SQL Query using Hugging Face model based on User Input with corrected column names
 def generate_sql_query(user_input, api_key):
     words = user_input.split()
     corrected_words = [correct_column_name(word) for word in words]
     corrected_input = ' '.join(corrected_words)
     
-    # Initialize ChatGroq
-    client = ChatGroq(
-        model="mixtral-8x7b-32768",
-        temperature=0,
-        api_key=api_key
-    )
-
-    prompt = (
-        f"Generate an SQL query based on this user request: '{corrected_input}'. "
-        f"Use the table name 'data_table' in the query."
-        f"TWF = Tool Wear Failure, HDF = Heat Dissipation Failure, PWF = Power Failure, OSF = Overstrain Failure, RNF = Random Failures. "
-        f"Talking about failure or failed always='1' and not failed means always='0'."
-    )
-
-    response = client.chat_completion(prompt=prompt)
+    messages = [
+        {
+            "role": "system",
+            "content": "Generate an SQL query based on user input."
+        },
+        {
+            "role": "user",
+            "content": f"User request: '{corrected_input}'. Use table 'data_table' in the query."
+        }
+    ]
+    
+    response = groq_llm.invoke(messages)
+    
     sql_query = response['choices'][0]['message']['content'].strip()
     return sql_query
 
@@ -102,26 +109,18 @@ def run_sql_query(sql_query):
         conn.close()
         return str(e)
 
-# Helper function to split input query into visualization, table, and summary parts using ChatGroq
+# Helper function to split input query into visualization, table, and summary parts
 def split_query_into_parts(user_query, api_key):
-    client = ChatGroq(
-        model="mixtral-8x7b-32768",
-        temperature=0.5,
-        api_key=api_key
-    )
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", 
+         "Analyze the user's query and break it down into Visualization, Table, and Summary."),
+        ("user", "{query}")
+    ])
+    
+    messages = prompt.invoke({
+        "query": user_query
+    })
 
-    prompt = (
-        f"Analyze the user's query: '{user_query}' and break it down into three distinct sections: Visualization, Table, and Summary. "
-        f"Ensure each section is correctly handled based on the dataset. The available columns from the dataset are: "
-        f"['UDI', 'Product_ID', 'Type', 'Air_temperature__K_', 'Process_temperature__K_', "
-        f"'Rotational_speed__rpm_', 'Torque__Nm_', 'Tool_wear__min_', 'Machine_failure', 'TWF', 'HDF', 'PWF', 'OSF', 'RNF']. "
-        f"TWF = Tool Wear Failure, HDF = Heat Dissipation Failure, PWF = Power Failure, OSF = Overstrain Failure, RNF = Random Failures. "
-        f"Talking about failure or failed always='1' and not failed means always='0'."
-        f"1) Visualization: Detect if the user wants a chart, graph, or visual representation. "
-        f"2) Table: Create an SQL query or Python code for table data. "
-        f"3) Summary: Provide a text-based summary or analysis."
-    )
-
-    response = client.chat_completion(prompt=prompt)
-    divided_query = response['choices'][0]['message']['content'].strip()
+    divided_query = groq_llm.invoke(messages)
     return divided_query
+
