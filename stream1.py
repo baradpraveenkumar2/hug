@@ -94,7 +94,7 @@ if api_key:
         query = st.text_area("Enter your query", height=40, label_visibility="hidden")
 
         if st.button("Submit"):
-            st.write(divided_queries+"first")
+            
             divided_queries = split_query_into_parts(query, api_key)
             st.write(divided_queries+"hello")
             if 'Visualization:' in divided_queries and 'Table:' in divided_queries and 'Summary:' in divided_queries:
